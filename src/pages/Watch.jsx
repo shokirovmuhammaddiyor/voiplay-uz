@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useFirebase } from '../contexts/FirebaseContext';
 import Hls from 'hls.js';
@@ -10,8 +10,8 @@ import ContentCard from '../components/ContentCard';
 import { parseSeoUrl, findContentBySlug, slugify, generateEpisodeUrl, generateMovieUrl } from '../utils/urlHelper';
 
 export default function Watch() {
-  const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { movies, tvShows, getMovieSource, getEpisodes, getEpisodeSource, genres, loading: firebaseLoading } = useFirebase();
 
   const videoRef = useRef(null);
@@ -24,46 +24,12 @@ export default function Watch() {
   const [episodesList, setEpisodesList] = useState([]);
   const [seasonsCount, setSeasonsCount] = useState(1);
 
-  // Parse URL parameters (SEO slug format)
+  // Parse URL — always read from pathname directly via parseSeoUrl.
+  // This makes Watch.jsx fully independent of which React Router route matched.
   const urlParams = React.useMemo(() => {
-    const pathname = window.location.pathname;
-
-    // Direct parameter access for slug-based routes
-    if (params.slug) {
-      const isMovie = pathname.startsWith('/movie');
-      if (isMovie) {
-        // Remove -uzbek-tilida suffix from slug for content lookup
-        const cleanSlug = params.slug.replace(/-uzbek-tilida$/, '');
-        console.log('Watch.jsx - Movie URL parsed:', { slug: params.slug, cleanSlug });
-        return {
-          type: 'movie',
-          slug: cleanSlug
-        };
-      } else {
-        // TV route with season and episode
-        // Remove -uzbek-tilida suffix from slug for content lookup
-        const cleanSlug = params.slug.replace(/-uzbek-tilida$/, '');
-        // Remove -qism suffix from episode for parsing
-        const cleanEpisode = params.episode ? params.episode.replace(/-qism$/, '') : null;
-        console.log('Watch.jsx - TV URL parsed:', {
-          slug: params.slug,
-          cleanSlug,
-          season: params.season,
-          episode: params.episode,
-          cleanEpisode
-        });
-        return {
-          type: 'tv',
-          slug: cleanSlug,
-          season: params.season ? parseInt(params.season) : null,
-          episode: cleanEpisode ? parseInt(cleanEpisode) : null
-        };
-      }
-    }
-
-    console.log('Watch.jsx - No slug found in URL');
-    return null;
-  }, [params]);
+    const parsed = parseSeoUrl(location.pathname);
+    return parsed || null;
+  }, [location.pathname]);
 
   // 1. Fetch Item info
   useEffect(() => {
@@ -200,6 +166,25 @@ export default function Watch() {
     };
   }, [sourceUrl]);
 
+  // Generate canonical URL — must be BEFORE any early return (Rules of Hooks)
+  const canonicalUrl = React.useMemo(() => {
+    if (!item) return 'https://voiplay.uz';
+    if (urlParams?.type === 'movie') {
+      return `https://voiplay.uz/movie/${slugify(item.title)}-uzbek-tilida`;
+    } else if (urlParams?.type === 'tv' && urlParams.season && urlParams.episode) {
+      return `https://voiplay.uz/tv/${slugify(item.title)}-uzbek-tilida/season-${urlParams.season}-fasl/${urlParams.episode}-qism`;
+    }
+    return 'https://voiplay.uz';
+  }, [item, urlParams]);
+
+  // Related Recommendations (Movies only) — must be BEFORE early return (Rules of Hooks)
+  const recommendations = React.useMemo(() => {
+    if (!item) return [];
+    return [...movies]
+      .filter(x => x.id !== item.id && x.genres && item.genres && x.genres.some(g => item.genres.includes(g)))
+      .slice(0, 5);
+  }, [item, movies]);
+
   if (!item) {
     return (
       <div className="watch-loading-screen">
@@ -209,21 +194,6 @@ export default function Watch() {
     );
   }
 
-  // Related Recommendations (Movies only)
-  const recommendations = [...movies]
-    .filter(x => x.id !== item.id && x.genres && item.genres && x.genres.some(g => item.genres.includes(g)))
-    .slice(0, 5);
-
-  // Generate canonical URL
-  const canonicalUrl = React.useMemo(() => {
-    if (!item) return 'https://voiplay.uz';
-    if (urlParams.type === 'movie') {
-      return `https://voiplay.uz/movie/${slugify(item.title)}-uzbek-tilida`;
-    } else if (urlParams.type === 'tv' && urlParams.season && urlParams.episode) {
-      return `https://voiplay.uz/tv/${slugify(item.title)}-uzbek-tilida/season-${urlParams.season}-fasl/${urlParams.episode}-qism`;
-    }
-    return 'https://voiplay.uz';
-  }, [item, urlParams]);
 
   return (
     <>
@@ -236,7 +206,7 @@ export default function Watch() {
       
       {/* Immersive Watch Header */}
       <div className="watch-top-nav">
-        <Link to={`/detail/${slugify(item.title)}`} className="back-link-btn glass-panel" title="Orqaga qaytish">
+        <Link to={item ? `/detail/${slugify(item.title)}` : '/'} className="back-link-btn glass-panel" title="Orqaga qaytish">
           <ArrowLeft size={18} />
           <span>Orqaga</span>
         </Link>
@@ -264,7 +234,7 @@ export default function Watch() {
         {error && (
           <div className="player-placeholder glass-panel error-box">
             <p className="error-text">{error}</p>
-            <Link to={`/detail/${slugify(item.title)}`} className="btn-premium btn-secondary reset-btn">
+            <Link to={item ? `/detail/${slugify(item.title)}` : '/'} className="btn-premium btn-secondary reset-btn">
               Tafsilotlarga qaytish
             </Link>
           </div>

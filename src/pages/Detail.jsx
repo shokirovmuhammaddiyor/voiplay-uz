@@ -30,16 +30,16 @@ export default function Detail() {
     }
 
     // Direct parameter access
-    if (params.id) {
-      const isNumeric = /^\d+$/.test(params.id);
+    if (params.param) {
+      const isNumeric = /^\d+$/.test(params.param);
       if (isNumeric) {
         return {
-          id: params.id,
+          id: params.param,
           isSlug: false
         };
       } else {
         return {
-          slug: params.id,
+          slug: params.param,
           isSlug: true
         };
       }
@@ -99,18 +99,11 @@ export default function Detail() {
   };
 
   // Navigate to Dedicated Episode Watch Page
-  const handleWatchEpisode = (episodeNum) => {
+  const handleWatchEpisode = (episodeNum, e) => {
+    e.preventDefault();
     const newUrl = generateEpisodeUrl(item.title, activeSeason, episodeNum);
-    console.log('handleWatchEpisode called:', {
-      title: item.title,
-      season: activeSeason,
-      episode: episodeNum,
-      generatedUrl: newUrl
-    });
     if (newUrl) {
       navigate(newUrl);
-    } else {
-      console.error('Failed to generate episode URL');
     }
   };
 
@@ -309,11 +302,13 @@ export default function Detail() {
             <div className="episodes-grid">
               {episodesData[activeSeason] && episodesData[activeSeason].map((episode, idx) => {
                 if (!episode) return null; // skip null index
+                const epUrl = generateEpisodeUrl(item.title, activeSeason, idx);
                 return (
-                  <div 
+                  <a 
                     key={idx} 
+                    href={epUrl || '#'}
                     className="episode-card-item glass-panel"
-                    onClick={() => handleWatchEpisode(idx)}
+                    onClick={(e) => handleWatchEpisode(idx, e)}
                   >
                     <div className="episode-thumbnail-wrapper">
                       <img 
@@ -334,7 +329,7 @@ export default function Detail() {
                         {episode.duration ? `${episode.duration} daqiqa` : '24 daqiqa'}
                       </p>
                     </div>
-                  </div>
+                  </a>
                 );
               })}
             </div>

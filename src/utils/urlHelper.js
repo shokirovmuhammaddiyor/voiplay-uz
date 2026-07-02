@@ -175,9 +175,7 @@ export function generateMovieUrl(title) {
 export function generateEpisodeUrl(title, season, episode) {
   const slug = slugify(title);
   if (!slug) return null;
-  const url = `/tv/${slug}-uzbek-tilida/season-${season}-fasl/${episode}-qism`;
-  console.log('generateEpisodeUrl:', { title, season, episode, slug, url });
-  return url;
+  return `/tv/${slug}-uzbek-tilida/season-${season}-fasl/${episode}-qism`;
 }
 
 /**
