@@ -79,9 +79,20 @@ export default function Detail() {
           setEpisodesData(episodes);
           // filter empty elements (index 0 might be null)
           const seasonIndices = [];
-          episodes.forEach((s, idx) => {
-            if (s) seasonIndices.push(idx);
-          });
+          
+          if (Array.isArray(episodes)) {
+            episodes.forEach((s, idx) => {
+              if (s) seasonIndices.push(idx);
+            });
+          } else if (typeof episodes === 'object') {
+            Object.keys(episodes).forEach((key) => {
+              const idx = parseInt(key);
+              if (!isNaN(idx) && episodes[key]) {
+                seasonIndices.push(idx);
+              }
+            });
+          }
+          
           setSeasons(seasonIndices);
           if (seasonIndices.length > 0) {
             setActiveSeason(seasonIndices[0]);
@@ -300,38 +311,51 @@ export default function Detail() {
 
             {/* Episodes List Grid */}
             <div className="episodes-grid">
-              {episodesData[activeSeason] && episodesData[activeSeason].map((episode, idx) => {
-                if (!episode) return null; // skip null index
-                const epUrl = generateEpisodeUrl(item.title, activeSeason, idx);
-                return (
-                  <a 
-                    key={idx} 
-                    href={epUrl || '#'}
-                    className="episode-card-item glass-panel"
-                    onClick={(e) => handleWatchEpisode(idx, e)}
-                  >
-                    <div className="episode-thumbnail-wrapper">
-                      <img 
-                        src={episode.still_path || item.backdropPath || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=300&q=80'} 
-                        alt={`Episode ${idx}`} 
-                        className="episode-thumbnail"
-                      />
-                      <div className="episode-play-icon-overlay">
-                        <Play size={18} fill="#fff" stroke="none" />
+              {episodesData[activeSeason] && (() => {
+                const epList = Array.isArray(episodesData[activeSeason])
+                  ? episodesData[activeSeason]
+                  : (() => {
+                      const list = [];
+                      Object.keys(episodesData[activeSeason]).forEach(key => {
+                        const idx = parseInt(key);
+                        if (!isNaN(idx)) list[idx] = episodesData[activeSeason][key];
+                      });
+                      return list;
+                    })();
+
+                return epList.map((episode, idx) => {
+                  if (!episode) return null; // skip null index
+                  const epUrl = generateEpisodeUrl(item.title, activeSeason, idx);
+                  return (
+                    <a 
+                      key={idx} 
+                      href={epUrl || '#'}
+                      className="episode-card-item glass-panel"
+                      onClick={(e) => handleWatchEpisode(idx, e)}
+                    >
+                      <div className="episode-thumbnail-wrapper">
+                        <img 
+                          src={episode.still_path || item.backdropPath || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=300&q=80'} 
+                          alt={`Episode ${idx}`} 
+                          className="episode-thumbnail"
+                        />
+                        <div className="episode-play-icon-overlay">
+                          <Play size={18} fill="#fff" stroke="none" />
+                        </div>
+                        <span className="episode-badge-count">{idx}-qism</span>
                       </div>
-                      <span className="episode-badge-count">{idx}-qism</span>
-                    </div>
-                    <div className="episode-card-details">
-                      <h4 className="episode-number-title">
-                        {idx}-Qism {episode.title ? `: ${episode.title}` : ''}
-                      </h4>
-                      <p className="episode-duration">
-                        {episode.duration ? `${episode.duration} daqiqa` : '24 daqiqa'}
-                      </p>
-                    </div>
-                  </a>
-                );
-              })}
+                      <div className="episode-card-details">
+                        <h4 className="episode-number-title">
+                          {idx}-Qism {episode.title ? `: ${episode.title}` : ''}
+                        </h4>
+                        <p className="episode-duration">
+                          {episode.duration ? `${episode.duration} daqiqa` : '24 daqiqa'}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                });
+              })()}
             </div>
           </section>
         )}

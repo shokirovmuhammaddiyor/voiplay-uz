@@ -79,7 +79,18 @@ export default function Watch() {
           const allEps = await getEpisodes(item.id);
           console.log('All episodes for TV show:', allEps);
           if (allEps && allEps[urlParams.season]) {
-            setEpisodesList(allEps[urlParams.season]);
+            const rawEps = allEps[urlParams.season];
+            const parsedEps = Array.isArray(rawEps)
+              ? rawEps
+              : (() => {
+                  const list = [];
+                  Object.keys(rawEps).forEach(key => {
+                    const idx = parseInt(key);
+                    if (!isNaN(idx)) list[idx] = rawEps[key];
+                  });
+                  return list;
+                })();
+            setEpisodesList(parsedEps);
           } else {
             console.error('No episodes found for season:', urlParams.season);
           }
