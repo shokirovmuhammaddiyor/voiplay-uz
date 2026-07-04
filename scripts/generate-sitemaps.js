@@ -384,6 +384,8 @@ async function generateSitemaps() {
       console.log('✅ No duplicate URLs found in sitemaps');
     }
 
+    // Explicitly exit to close Firebase persistent connections
+    process.exit(0);
   } catch (error) {
     console.error('❌ Error generating sitemaps:', error);
     process.exit(1);
